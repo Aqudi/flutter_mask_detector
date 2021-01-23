@@ -1,96 +1,38 @@
-import 'package:camera/camera.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-import '../models/tflite_result.dart';
-import '../pages/detecting_result.dart';
-import '../services/camera_service.dart';
-import '../services/logger_service.dart';
-import '../services/tflite_service.dart';
+import 'realtime_detec_page.dart';
+import 'static_detect_page.dart';
 
-class HomePage extends StatefulWidget {
-  @override
-  _HomePageState createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
-  CameraService cameraService = CameraService();
-  TfLiteService tfliteService = TfLiteService();
-
-  AnimationController _animationController;
-  Animation _colorTween;
-
-  List<TfLiteResult> _outputs = [];
-
-  @override
-  void initState() {
-    super.initState();
-
-    _animationController = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 500),
-    );
-    _colorTween = ColorTween(
-      begin: Colors.green,
-      end: Colors.red,
-    ).animate(_animationController);
-
-    tfliteService.loadModel();
-    tfliteService.tfLiteResultsController.stream.listen(
-      (results) {
-        for (final result in results) {
-          _animationController.animateTo(
-            result.confidence,
-            curve: Curves.bounceIn,
-            duration: Duration(milliseconds: 500),
-          );
-        }
-        setState(() {
-          _outputs = results;
-          cameraService.isDetecting = false;
-        });
-      },
-      onDone: () {},
-      onError: logger.error,
-    );
-  }
-
+class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text("TfLite example"),
       ),
-      body: FutureBuilder<void>(
-        future: cameraService
-            .startImageStream(tfliteService.classifyImageFromCamera),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.done) {
-            // If the Future is complete, display the preview.
-            return Stack(
-              children: <Widget>[
-                CameraPreview(cameraService.camera),
-                DetectResult(
-                  colorTween: _colorTween,
-                  animationController: _animationController,
-                  outputs: _outputs,
-                ),
-              ],
-            );
-          } else {
-            // Otherwise, display a loading indicator.
-            return Center(child: CircularProgressIndicator());
-          }
-        },
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            RaisedButton(
+              child: Text("실시간 영상"),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => RealTimeDetectPage()),
+              ),
+            ),
+            RaisedButton(
+              child: Text("이미지 선택"),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => StaticImageClassificationPage()),
+              ),
+            ),
+          ],
+        ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    logger.verbose("dispose");
-    cameraService.stopImageStream();
-    tfliteService.disposeModel();
-    super.dispose();
   }
 }
