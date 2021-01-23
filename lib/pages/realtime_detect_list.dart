@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
 
@@ -14,8 +16,8 @@ class RealTimeDetectReslutList extends StatefulWidget {
 
 class _RealTimeDetectReslutListState extends State<RealTimeDetectReslutList>
     with TickerProviderStateMixin {
-  CameraService cameraService = CameraService();
-  TfLiteService tfliteService = TfLiteService();
+  final CameraService cameraService = CameraService();
+  final TfLiteService tfliteService = TfLiteService();
 
   AnimationController _animationController;
   Animation _colorTween;
@@ -36,23 +38,6 @@ class _RealTimeDetectReslutListState extends State<RealTimeDetectReslutList>
     ).animate(_animationController);
 
     tfliteService.loadModel();
-    tfliteService.tfLiteResultsController.stream.listen(
-      (results) {
-        for (final result in results) {
-          _animationController.animateTo(
-            result.confidence,
-            curve: Curves.bounceIn,
-            duration: Duration(milliseconds: 500),
-          );
-        }
-        setState(() {
-          _outputs = results;
-          cameraService.isDetecting = false;
-        });
-      },
-      onDone: () {},
-      onError: logger.error,
-    );
   }
 
   @override
@@ -63,17 +48,28 @@ class _RealTimeDetectReslutListState extends State<RealTimeDetectReslutList>
       future:
           cameraService.startImageStream(tfliteService.classifyImageFromCamera),
       builder: (context, snapshot) {
-        return Positioned.fill(
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              height: 200.0,
-              width: width,
-              color: Colors.white,
-              child: _outputs != null && _outputs.isNotEmpty
-                  ? _buildResultListView(width)
-                  : _buildWaitingModelText(),
-            ),
+        return Container(
+          height: 200.0,
+          width: width,
+          color: Colors.white,
+          child: StreamBuilder(
+            stream: tfliteService.stream,
+            builder: (context, snapshot) {
+              if (snapshot.hasData && snapshot.data.isNotEmpty) {
+                for (final result in snapshot.data) {
+                  _animationController.animateTo(
+                    result.confidence,
+                    curve: Curves.bounceIn,
+                    duration: Duration(milliseconds: 500),
+                  );
+                }
+                _outputs = snapshot.data;
+                cameraService.endDetecting();
+                return _buildResultListView(width);
+              } else {
+                return Center(child: _buildWaitingModelText());
+              }
+            },
           ),
         );
       },
@@ -132,5 +128,13 @@ class _RealTimeDetectReslutListState extends State<RealTimeDetectReslutList>
         fontSize: 16.0,
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    logger.verbose("dispose");
+    _animationController.dispose();
+    cameraService.stopImageStream();
+    super.dispose();
   }
 }
