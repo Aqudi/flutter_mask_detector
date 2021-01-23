@@ -1,13 +1,16 @@
 import 'package:logger/logger.dart';
 
-final logger = LoggerService();
+final logger = LoggerService(level: Level.error);
 
 class LoggerService {
   static final _loggerService = LoggerService._internal();
 
   final Logger _logger;
 
-  factory LoggerService() {
+  factory LoggerService({Level level}) {
+    if (level != null) {
+      Logger.level = level;
+    }
     return _loggerService;
   }
 
