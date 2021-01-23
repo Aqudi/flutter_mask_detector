@@ -8,7 +8,7 @@ import '../models/tflite_result.dart';
 import 'logger_service.dart';
 
 class TfLiteService {
-  StreamController<List<TfLiteResult>> tfLiteResultsController =
+  StreamController<List<TfLiteResult>> streamController =
       StreamController.broadcast();
 
   final _outputs = <TfLiteResult>[];
@@ -24,7 +24,7 @@ class TfLiteService {
 
   TfLiteService._internal();
 
-  List<TfLiteResult> get outputs => _outputs;
+  Stream<List<TfLiteResult>> get stream => streamController.stream;
 
   Future<String> loadModel() async {
     logger.verbose("loadModel");
@@ -61,8 +61,10 @@ class TfLiteService {
   }
 
   void classifyImageFromCamera(CameraImage image) async {
+    logger.verbose("classifyImageFromCamera");
+    logger.debug(isModelLoaded && !isBusy);
+
     if (isModelLoaded && !isBusy) {
-      logger.verbose("classifyImageFromCamera");
       isBusy = true;
       await Tflite.runModelOnFrame(
         bytesList: image.planes.map((plane) {
@@ -98,11 +100,6 @@ class TfLiteService {
       logger.verbose(msg);
     }
     _outputs.sort((a, b) => a.confidence.compareTo(b.confidence));
-    tfLiteResultsController.add(_outputs);
-  }
-
-  void disposeModel() {
-    Tflite.close();
-    tfLiteResultsController.close();
+    streamController.add(_outputs);
   }
 }

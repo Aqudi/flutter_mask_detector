@@ -17,7 +17,9 @@ class CameraService {
   final CameraLensDirection _direction = CameraLensDirection.back;
 
   bool isDetecting = false;
+
   bool get isInitialized => camera != null && camera.value.isInitialized;
+  bool get isStreaming => isInitialized && camera.value.isStreamingImages;
 
   Future<CameraDescription> _getCamera(CameraLensDirection dir) async {
     return await availableCameras().then(
@@ -37,10 +39,10 @@ class CameraService {
               : ResolutionPreset.high,
           enableAudio: false);
       return camera.initialize().then((value) {
-        return camera.value.isInitialized;
+        return isInitialized;
       });
     } else {
-      return camera.value.isInitialized;
+      return isInitialized;
     }
   }
 
@@ -48,18 +50,21 @@ class CameraService {
     if (!isInitialized) {
       await initializeCamera();
     }
+    if (isStreaming) return;
+
     logger.verbose("Starting ImageStream");
     return camera.startImageStream((cameraImage) {
       if (isDetecting) return;
-      isDetecting = true;
-
-      logger.verbose(isDetecting);
+      startDetecting();
       onAvailable(cameraImage);
     });
   }
 
   Future<void> stopImageStream() async {
-    return camera.stopImageStream();
+    if (isStreaming) {
+      await camera.stopImageStream();
+    }
+    endDetecting();
   }
 
   Future<XFile> takePicture() async {
@@ -68,5 +73,13 @@ class CameraService {
     }
     logger.verbose("Take a picture");
     return await camera.takePicture();
+  }
+
+  void startDetecting() {
+    isDetecting = true;
+  }
+
+  void endDetecting() {
+    isDetecting = false;
   }
 }
