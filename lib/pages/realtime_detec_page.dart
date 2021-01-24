@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 
 import '../services/camera_service.dart';
 import '../services/logger_service.dart';
-import 'realtime_detect_list.dart';
+import '../services/tflite_service.dart';
+import 'detect_result_list.dart';
 
 class RealTimeDetectPage extends StatefulWidget {
   @override
@@ -12,6 +13,12 @@ class RealTimeDetectPage extends StatefulWidget {
 
 class _RealTimeDetectPageState extends State<RealTimeDetectPage> {
   final CameraService cameraService = CameraService();
+  final TfLiteService tfLiteService = TfLiteService();
+
+  Future _getInitFuture() async {
+    await tfLiteService.loadModel();
+    await cameraService.initializeCamera();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,17 +31,18 @@ class _RealTimeDetectPageState extends State<RealTimeDetectPage> {
       body: Container(
         width: width,
         child: FutureBuilder<void>(
-          future: cameraService.initializeCamera(),
+          future: _getInitFuture(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.done) {
-              // If the Future is complete, display the preview.
+              final detectResultFuture = cameraService
+                  .startImageStream(tfLiteService.classifyImageFromCamera);
               return Stack(
                 children: <Widget>[
                   CameraPreview(cameraService.camera),
                   Positioned.fill(
                     child: Align(
                       alignment: Alignment.bottomCenter,
-                      child: RealTimeDetectReslutList(),
+                      child: DetectResultList(detectResultFuture),
                     ),
                   ),
                 ],
@@ -52,6 +60,9 @@ class _RealTimeDetectPageState extends State<RealTimeDetectPage> {
   @override
   void dispose() {
     logger.verbose("dispose");
+    cameraService.stopImageStream();
+    cameraService.dispose();
+    tfLiteService.stopClassifyImageFromCamera();
     super.dispose();
   }
 }
