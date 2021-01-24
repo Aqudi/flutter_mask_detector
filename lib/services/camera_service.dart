@@ -16,10 +16,8 @@ class CameraService {
   CameraController camera;
   final CameraLensDirection _direction = CameraLensDirection.back;
 
-  bool isDetecting = false;
-
   bool get isInitialized => camera != null && camera.value.isInitialized;
-  bool get isStreaming => isInitialized && camera.value.isStreamingImages;
+  bool get isStreaming => camera != null && camera.value.isStreamingImages;
 
   Future<CameraDescription> _getCamera(CameraLensDirection dir) async {
     return await availableCameras().then(
@@ -30,8 +28,8 @@ class CameraService {
   }
 
   Future<bool> initializeCamera() async {
-    logger.verbose("Initializing camera..");
-    if (!isInitialized) {
+    if (camera != null || !isInitialized) {
+      logger.verbose("Initializing camera..");
       camera = CameraController(
           await _getCamera(_direction),
           defaultTargetPlatform == TargetPlatform.iOS
@@ -53,9 +51,7 @@ class CameraService {
     if (isStreaming) return;
 
     logger.verbose("Starting ImageStream");
-    return camera.startImageStream((cameraImage) {
-      if (isDetecting) return;
-      startDetecting();
+    return camera?.startImageStream((cameraImage) {
       onAvailable(cameraImage);
     });
   }
@@ -64,7 +60,6 @@ class CameraService {
     if (isStreaming) {
       await camera.stopImageStream();
     }
-    endDetecting();
   }
 
   Future<XFile> takePicture() async {
@@ -75,11 +70,7 @@ class CameraService {
     return await camera.takePicture();
   }
 
-  void startDetecting() {
-    isDetecting = true;
-  }
-
-  void endDetecting() {
-    isDetecting = false;
+  void dispose() {
+    camera?.dispose();
   }
 }
