@@ -113,4 +113,8 @@ class TfLiteService {
       _streamController.add(_outputs);
     }
   }
+
+  void dispose() {
+    _streamController.close();
+  }
 }
