@@ -20,8 +20,10 @@ class _StaticImageClassificationPageState
 
   File _image;
 
-  Future _getInitFuture() async {
-    await tfLiteService.loadModel();
+  @override
+  void dispose() {
+    logger.verbose("dispose");
+    super.dispose();
   }
 
   @override
@@ -55,33 +57,22 @@ class _StaticImageClassificationPageState
           ),
         ],
       ),
-      body: FutureBuilder(
-        future: _getInitFuture(),
-        builder: (context, snapshot) {
-          switch (snapshot.connectionState) {
-            case ConnectionState.done:
-              if (_image != null) {
-                return Column(
-                  children: [
-                    Container(
-                      height: height * 0.6,
-                      child: _buildImage(_image),
-                    ),
-                    SizedBox(height: 10),
-                    DetectResultList(
-                      tfLiteService.classifyImageFile(_image),
-                    ),
-                  ],
-                );
-              }
-              return Center(
-                child: Text("Please take a photo or select a photo."),
-              );
-            default:
-              return Center(child: CircularProgressIndicator());
-          }
-        },
-      ),
+      body: (_image != null)
+          ? Column(
+              children: [
+                Container(
+                  height: height * 0.6,
+                  child: _buildImage(_image),
+                ),
+                SizedBox(height: 10),
+                DetectResultList(
+                  tfLiteService.classifyImageFile(_image),
+                ),
+              ],
+            )
+          : Center(
+              child: Text("Please take a photo or select a photo."),
+            ),
     );
   }
 
@@ -90,12 +81,5 @@ class _StaticImageClassificationPageState
       image,
       fit: BoxFit.fitHeight,
     );
-  }
-
-  @override
-  void dispose() {
-    logger.verbose("dispose");
-    tfLiteService.dispose();
-    super.dispose();
   }
 }
